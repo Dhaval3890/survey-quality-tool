@@ -1,0 +1,7 @@
+services:
+  survey:
+    build: .
+    image: survey-quality-tool:latest
+    ports:
+      - "8100:8000"
+    restart: unless-stopped

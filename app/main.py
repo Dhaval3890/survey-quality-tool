@@ -1,58 +1,57 @@
-from typing import List, Optional
-
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import JSONResponse
+import pandas as pd
+from app.validation import validate_survey
+from app.reliability import compute_reliability
+from app.json_safe import to_json_safe  # 🔥 make results JSON-safe
+import logging
 
-from .validation import load_table_from_upload, basic_validation
-from .reliability import reliability_report
-from .json_safe import to_json_safe
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-app = FastAPI()
+app = FastAPI(title="Survey Quality Tool API")
 
 
 @app.get("/")
 def root():
-    return {"message": "Survey quality tool is running!", "docs": "/docs"}
+    return {"message": "Survey quality tool is running!"}
 
 
 @app.post("/analyze")
 async def analyze(
     file: UploadFile = File(...),
-    likert_min: float = Form(1.0),
-    likert_max: float = Form(5.0),
-    id_columns: Optional[str] = Form(""),
-    straight_line_threshold: int = Form(6),
+    likert_min: int = Form(...),
+    likert_max: int = Form(...),
+    id_columns: str = Form(...),
+    straight_line_threshold: int = Form(...)
 ):
-    """
-    Upload survey data (CSV or Excel) and get:
-    - basic validation (missing %, out-of-range, straight-lining)
-    - Cronbach's alpha for all numeric items
-    """
-    raw = await file.read()
-    df = load_table_from_upload(raw, file.filename)
 
-    id_cols: List[str] = (
-        [c.strip() for c in id_columns.split(",") if c.strip()]
-        if id_columns
-        else []
+    logger.info(f"Analyzing file: {file.filename}")
+    contents = await file.read()
+    df = pd.read_csv(
+        pd.io.common.BytesIO(contents),
+        encoding="ISO-8859-1"
     )
 
-    validation = basic_validation(
-        df,
-        likert_min=likert_min,
-        likert_max=likert_max,
-        id_cols=id_cols,
-        straight_line_threshold=straight_line_threshold,
-    )
-    reliability = reliability_report(df)
+    id_cols = [col.strip() for col in id_columns.split(",")]
 
-    payload = {
+    # Run quality checks
+    validation = validate_survey(df, id_cols, likert_min, likert_max, straight_line_threshold)
+    reliability = compute_reliability(df, id_cols)
+
+    result = {
         "file": file.filename,
+        "total_rows": len(df),
         "likert_min": likert_min,
         "likert_max": likert_max,
-        "id_columns": id_cols,
+        
+        # Results
         "validation": validation,
         "reliability": reliability,
     }
-    # IMPORTANT: make everything JSON safe (no NaN / inf)
-    return JSONResponse(to_json_safe(payload))
+
+    # 🔥 Fix error:
+    # ValueError: Out of range float values are not JSON compliant
+    safe_result = to_json_safe(result)
+
+    return JSONResponse(content=safe_result)

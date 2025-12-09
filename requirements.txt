@@ -4,3 +4,6 @@ pandas
 numpy
 openpyxl
 python-multipart
+pingouin
+factor-analyzer
+scipy

@@ -29,9 +29,16 @@ def basic_validation(
     result["numeric_columns"] = numeric_cols
 
     # missing %
-    result["missing_pct"] = {
-        col: float(df[col].isna().mean() * 100.0) for col in df.columns
-    }
+    missing_pct: Dict[str, float] = {}
+    for col in df.columns:
+        m = df[col].isna().mean()
+        # If column is completely empty, m can be NaN → replace with None
+        if pd.isna(m):
+            missing_pct[col] = None
+        else:
+            missing_pct[col] = float(m * 100.0)
+    result["missing_pct"] = missing_pct
+
 
     # out-of-range counts
     oor_counts: Dict[str, int] = {}

@@ -1,3 +1,5 @@
+from .json_safe import to_json_safe
+
 from typing import List, Optional
 
 from fastapi import FastAPI, UploadFile, File, Form
@@ -45,13 +47,14 @@ async def analyze(
     )
     reliability = reliability_report(df)
 
-    return JSONResponse(
-        {
-            "file": file.filename,
-            "likert_min": likert_min,
-            "likert_max": likert_max,
-            "id_columns": id_cols,
-            "validation": validation,
-            "reliability": reliability,
-        }
-    )
+    payload = {
+        "file": file.filename,
+        "likert_min": likert_min,
+        "likert_max": likert_max,
+        "id_columns": id_cols,
+        "validation": validation,
+        "reliability": reliability,
+    }
+
+    return JSONResponse(to_json_safe(payload))
+

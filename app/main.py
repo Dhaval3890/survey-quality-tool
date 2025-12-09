@@ -1,5 +1,3 @@
-from .json_safe import to_json_safe
-
 from typing import List, Optional
 
 from fastapi import FastAPI, UploadFile, File, Form
@@ -7,6 +5,7 @@ from fastapi.responses import JSONResponse
 
 from .validation import load_table_from_upload, basic_validation
 from .reliability import reliability_report
+from .json_safe import to_json_safe
 
 app = FastAPI()
 
@@ -26,8 +25,8 @@ async def analyze(
 ):
     """
     Upload survey data (CSV or Excel) and get:
-    - basic validation
-    - Cronbach's alpha (all numeric items)
+    - basic validation (missing %, out-of-range, straight-lining)
+    - Cronbach's alpha for all numeric items
     """
     raw = await file.read()
     df = load_table_from_upload(raw, file.filename)
@@ -55,6 +54,5 @@ async def analyze(
         "validation": validation,
         "reliability": reliability,
     }
-
+    # IMPORTANT: make everything JSON safe (no NaN / inf)
     return JSONResponse(to_json_safe(payload))
-

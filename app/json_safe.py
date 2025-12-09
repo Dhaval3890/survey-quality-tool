@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 def to_json_safe(value: Any) -> Any:
     """
     Recursively convert NaN / inf floats into None so standard JSON can serialize.
-    Works for nested dicts/lists/tuples.
+    Handles nested dicts, lists, tuples.
     """
     # floats: handle NaN / inf
     if isinstance(value, float):
